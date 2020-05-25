@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Animate a point</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+
+    <title>Current Weather</title>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,900" rel="stylesheet" />
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.8.1/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v1.8.1/mapbox-gl.css" rel="stylesheet" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+      .mapboxgl-popup {
+        max-width: 200px;
+      }
+      .mapboxgl-popup-content {
+        text-align: center;
+        font-family: "Open Sans", sans-serif;
+      }
+      .sidebar {
+        position: relative;
+        z-index: 2;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg"></div>
+    <div class="sidebar">
+      <div id="description"></div>
+      <h1 id="temp"></h1>
+      <div id="location"></div>
+    </div>
+    <div id="map"></div>
+    <script>
+      mapboxgl.accessToken =
+        "pk.eyJ1Ijoia2lsbGJlcmV6IiwiYSI6ImNrN251anRtbTAyZWkzbXBndmJ2dnhqY2UifQ.e3UAWx-tE2B7JKMxhON4ew";
+      var map = new mapboxgl.Map({
+        container: "map",
+        style: "mapbox://styles/mapbox/streets-v11",
+        center: [24.94, 60.19],
+        zoom: 11
+      });
+
+      console.dir(map);
+
+      var radius = 20;
+
+      let url = "https://rata.digitraffic.fi/api/v1/train-locations.geojson/latest";
+
+      map.on("load", function() {
+        // Add a source and layer displaying a point which will be animated in a circle.
+        map.addSource("point", {
+          type: "geojson",
+          data: url
+        });
+
+        window.setInterval(function() {
+          map.getSource("point").setData(url);
+        }, 2000);
+
+        map.addLayer({
+          id: "point",
+          source: "point",
+          type: "circle",
+          paint: {
+            "circle-radius": 10,
+            "circle-color": "#007cbf"
+          }
+        });
+
+        map.on("click", "point", function(e) {
+          map.flyTo({ center: e.features[0].geometry.coordinates });
+        });
+        map.on("click", "point", function(e) {
+          const popup = new mapboxgl.Popup({ closeOnClick: false });
+          popup
+            .setLngLat(e.features[0].geometry.coordinates)
+            .setText(e.features[0].properties.trainNumber)
+            .addTo(map);
+          console.log(e.features);
+        });
+        map.on("mouseenter", "point", function() {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", "point", function() {
+          map.getCanvas().style.cursor = "";
+        });
+        console.log(url);
+      });
+
+      const key = "5872bf6a409d40ce40f0d859dfc827db";
+
+      function weatherBallon(cityID) {
+        fetch("https://api.openweathermap.org/data/2.5/weather?id=" + cityID + "&appid=" + key)
+          .then(function(resp) {
+            return resp.json();
+          }) // Convert data to json
+          .then(function(data) {
+            drawWeather(data);
+          })
+          .catch(function() {
+            // catch any errors
+          });
+      }
+      function drawWeather(d) {
+        var celcius = Math.round(parseFloat(d.main.temp) - 273.15);
+        var fahrenheit = Math.round((parseFloat(d.main.temp) - 273.15) * 1.8 + 32);
+        var description = d.weather[0].description;
+
+        document.getElementById("description").innerHTML = description;
+        document.getElementById("temp").innerHTML = celcius + "&deg;";
+        document.getElementById("location").innerHTML = d.name;
+
+        if (description.indexOf("rain") > 0) {
+          document.body.className = "rainy";
+        } else if (description.indexOf("cloud") > 0) {
+          document.body.className = "cloudy";
+        } else if (description.indexOf("sunny") > 0) {
+          document.body.className = "sunny";
+        } else {
+          document.body.className = "clear";
+        }
+      }
+      window.onload = function() {
+        weatherBallon(658225);
+      };
+    </script>
+  </body>
+</html>
